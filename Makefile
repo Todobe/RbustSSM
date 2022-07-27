@@ -1,18 +1,24 @@
 all: RobustSSM
 
-CFLAGS = -std=c++11
+CFLAGS = -std=c++11 -O2
 
-RobustSSM: RobustSSM.o graph.o
-	$(CXX) $(CFLAGS) RobustSSM.o graph.o -o RobustSSM
+RobustSSM: RobustSSM.o Graph.o Functions.o
+	$(CXX) $(CFLAGS) RobustSSM.o Graph.o Functions.o -o RobustSSM
 
-RobustSSM.o: RobustSSM.cpp graph.h ./include/clipp.h ./graph.h
+RobustSSM.o: RobustSSM.cpp Graph.h ./include/clipp.h Graph.h
 	$(CXX) $(CFLAGS) -c RobustSSM.cpp -o RobustSSM.o
 
-graph.o: graph.cpp graph.h
-	$(CXX) $(CFLAGS) -c graph.cpp -o graph.o
+Graph.o: Graph.cpp Graph.h
+	$(CXX) $(CFLAGS) -c Graph.cpp -o Graph.o
+
+Functions.o: Functions.cpp Functions.h Graph.h
+	$(CXX) $(CFLAGS) -c Functions.cpp -o Functions.o
 
 run: RobustSSM
-	./RobustSSM ./data/Video_game_network.txt ./data/Video_game_task.txt
+	#./RobustSSM ./data/Video_game_network.txt ./data/Video_game_task.txt -tau 0
+	#./RobustSSM ./data/Video_game_network.txt ./data/Video_game_task.txt -tau 0 -alg Frequency -result Frequency.txt
+	./RobustSSM ./data/Video_game_network.txt ./data/Video_game_task.txt -tau 0 -alg OMegA -result OMegA.txt
+
 
 clean:
 	rm *.o

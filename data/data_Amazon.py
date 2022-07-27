@@ -4,6 +4,8 @@ import os
 
 import argparse
 
+from collections import defaultdict
+
 userIDCount = 0
 userIDMap = {}
 
@@ -46,32 +48,41 @@ if __name__ == "__main__":
     parser.add_argument('--meta_data_path', default="meta_Video_Games.json.gz", type=str, help='meta data path')
     parser.add_argument('--output_file', default="./Video_game_network.txt", type=str, help='output file')
     parser.add_argument('--task_file', default="./Video_game_task.txt", type=str, help='task file' )
-    parser.add_argument('--big_user_bound', default=5, type=str, help='big user bound')
+    parser.add_argument('--big_user_bound', default=10, type=int, help='big user bound')
+    parser.add_argument('--item_bound', default=50, type=int, help='item bound')
+    parser.add_argument('--user_bound', default=0, type=int, help='user bound')
     args = parser.parse_args()
 
-    user_buy = {}  # 'user' -> [('item','time')]
+    userCount=defaultdict(int)
+    itemCount=defaultdict(int)
+
+    for d in parse(args.data_path):
+        userCount[d['reviewerID']] += 1
+        itemCount[d['asin']] += 1
+
+    user_buy = defaultdict(list)  # 'user' -> [('item','time')]
     edges_weight = {}  # item edge -> weight
-    item_user = {}  # {'item: ['user']}
+    item_user = defaultdict(list)  # {'item: ['user']}
     big_user_cnt = 0
     edge_num = 0
     for d in parse(args.meta_data_path):
+        if itemCount[d['asin']] < args.item_bound:
+            continue
         itemID = getItemID(d['asin'])
         for also_buy in d['also_buy']:
+            if itemCount[also_buy] < args.item_bound:
+                continue
             edges_weight[(itemID, getItemID(also_buy))] = 0
 
     for d in parse(args.data_path):
+        if userCount[d['reviewerID']] <args.user_bound or itemCount[d['asin']] < args.item_bound:
+            continue
         userID = getUserID(d['reviewerID'])
         itemID = getItemID(d['asin'])
-        if userID in user_buy:
-            user_buy[userID].append((itemID, get_time_stamp(d['reviewTime'])))
-        else:
-            user_buy[userID] = [(itemID, get_time_stamp(d['reviewTime']))]
-        if len(user_buy[userID]) == args.big_user_bound * 2:
+        user_buy[userID].append((itemID, get_time_stamp(d['reviewTime'])))
+        if len(user_buy[userID]) == args.big_user_bound:
             big_user_cnt = big_user_cnt + 1
-        if itemID in item_user:
-            item_user[itemID].append(userID)
-        else:
-            item_user[itemID] = [userID]
+        item_user[itemID].append(userID)
 
     for user in user_buy:
         user_buy[user].sort(key=lambda x: x[1])
@@ -83,12 +94,12 @@ if __name__ == "__main__":
 
     for i in range(0, itemIDCount):
         edges_weight[(i, i)] = 0
-        if i not in item_user:
-            item_user[i] = []
 
     for edge in edges_weight:
         if edge[0] == edge[1]:
             edges_weight[edge] = len(item_user[edge[0]]) / userIDCount
+        elif len(item_user[edge[0]]) == 0:
+            edges_weight[edge] = 0
         else:
             edges_weight[edge] = len([val for val in item_user[edge[0]] if val in item_user[edge[1]]]) / len(item_user[edge[0]])
         if edges_weight[edge] != 0:
@@ -111,10 +122,12 @@ if __name__ == "__main__":
         file.write(f"{big_user_cnt}\n")
         for item_stamps in user_buy.values():
             item_num = len(item_stamps)
-            if item_num < args.big_user_bound * 2:
+            if item_num < args.big_user_bound:
                 continue
-            file.write(f"{item_num} {args.big_user_bound} ")
+            file.write(f"{item_num} ")
             for item_stamp in item_stamps:
                 file.write(f"{item_stamp[0]} ")
             file.write("\n")
         file.close()
+
+    print(itemIDCount, edge_num,big_user_cnt)
