@@ -86,11 +86,11 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
     vector<double> accuracyScore=vector<double>(k-g);
     vector<double> sequenceScore=vector<double>(k-g);
 
-    int taskNum;
+    int taskNum, totalTask = 0;
     taskFile>>taskNum;
     outputFile<<taskNum<<endl;
     for(int taskID=0;taskID<taskNum;taskID++){
-        cout<<taskID<<endl;
+        if(taskID%1000==0) cout<<func<<": "<<taskID<<"/"<<taskNum<<endl;
         int totalNodeNum;
         taskFile>>totalNodeNum;
         vector<int> sigma, realSigma;
@@ -98,6 +98,10 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
             taskFile>>realSelectedNode;
             realSigma.push_back(realSelectedNode);
         }
+
+        if(totalNodeNum < k) continue;
+        totalTask ++ ;
+
         if(func=="RoseNet") RoseNetAlgorithm(G, sigma, realSigma, tau, g, k);
         else if(func=="Frequency") Frequency(G, sigma, realSigma, tau, g, k);
         else if(func=="OMegA") OMegA(G, sigma, realSigma, tau, g, k);
@@ -110,15 +114,23 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
         calcSequenceScore(sequenceScore, sigma, realSigma, g, k, tau);
     }
 
+    if(totalTask==0){
+        resultFile<<"No valid Task";
+        return;
+    }
     for(int i=0;i<k-g;i++){
-        accuracyScore[i] /= taskNum;
-        sequenceScore[i] /= taskNum;
+        accuracyScore[i] /= totalTask;
+        sequenceScore[i] /= totalTask;
     }
 
     clock_t end_time = clock();
     double total_time = double(end_time - start_time) / CLOCKS_PER_SEC;
 
     resultFile<<"Run Algorithm "<<func<<endl;
+    resultFile<<"Nodes Number: "<<G->nodeNum<<" Edges Number: "<<G->edgeNum<<endl;
+    resultFile<<"k: "<<k<<" g: "<<g<<" tau: "<<tau<<endl;
+    resultFile<<"Total Task Number: "<<taskNum<<endl;
+    resultFile<<"Total Valid Task: "<<totalTask<<endl;
     resultFile<<"Time: "<<total_time<<" seconds."<<endl;
 
     resultFile<<"Accuracy Score:"<<endl;

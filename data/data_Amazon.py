@@ -130,4 +130,4 @@ if __name__ == "__main__":
             file.write("\n")
         file.close()
 
-    print(itemIDCount, edge_num,big_user_cnt)
+    print(itemIDCount, edge_num, big_user_cnt)
