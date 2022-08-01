@@ -44,7 +44,9 @@ double calcFunction(Graph *G, pair<int, int> edge, const vector<int>& sigma){
 void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma, int tau, int g,int k){
     //RoseNet Algorithm
     vector<int> sigma1, sigma2;
+    vector<int> given;
     for(int i=0;i<g;i++){
+        given.push_back(realSigma[i]);
         if(sigma1.size()<tau){
             sigma1.push_back(realSigma[i]);
         }else{
@@ -83,7 +85,7 @@ void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma,
         for(auto edge:G->Edges){
             //====
             if(edge.first!=edge.second && find(sigma2.begin(),sigma2.end(),edge.first)==sigma2.end()
-               && find(sigma1.begin(),sigma1.end(),edge.first)==sigma1.end()) continue;
+               && find(given.begin(), given.end() ,edge.first)==given.end()) continue;
             //====
             if(find(sigma1.begin(), sigma1.end(), edge.second)!=sigma1.end()) continue;
             if(find(sigma2.begin(), sigma2.end(), edge.second)!=sigma2.end()) continue;
@@ -120,13 +122,15 @@ void Frequency(Graph *G, vector<int> &sigma, const vector<int> realSigma, int ta
     int cur=0;
     for(int i=0;i<k;i++){
         if(i<g) sigma.push_back(realSigma[i]);
-        while(cur<nodes.size()){
-            if(find(sigma.begin(), sigma.end(), nodes[cur].second)==sigma.end()){
-                sigma.push_back(nodes[cur].second);
+        else {
+            while (cur < nodes.size()) {
+                if (find(sigma.begin(), sigma.end(), nodes[cur].second) == sigma.end()) {
+                    sigma.push_back(nodes[cur].second);
+                    cur++;
+                    break;
+                }
                 cur++;
-                break;
             }
-            cur++;
         }
     }
 }
@@ -172,12 +176,12 @@ void OMegA(Graph *G, vector<int> &sigma, const vector<int> realSigma, int tau, i
         pair<int,int> e=make_pair(-1,-1);
         double maxf = 0;
         for(auto edge: G->Edges){
-            if(find(sigma.begin(),sigma.end(),edge.first)!=sigma.end()) continue;
+            //if(find(sigma.begin(),sigma.end(),edge.first)!=sigma.end()) continue;
             if(find(sigma.begin(),sigma.end(),edge.second)!=sigma.end()) continue;
             int cnt=0;
             if(find(sgm.begin(),sgm.end(),edge.first)!=sgm.end()) cnt++;
             if(find(sgm.begin(),sgm.end(),edge.second)!=sgm.end()) cnt++;
-            if(sgm.size()+cnt>k-g) continue;
+            if(sgm.size()+cnt>k) continue;
             edges.push_back(edge);
             sgm=sigma;
             reorder(G, sgm,edges);
@@ -195,8 +199,6 @@ void OMegA(Graph *G, vector<int> &sigma, const vector<int> realSigma, int tau, i
         sgm=sigma;
         reorder(G, sgm,edges);
     }
-    for(auto node:sgm){
-        sigma.push_back(node);
-    }
+    sigma = sgm;
 
 }

@@ -13,6 +13,10 @@
 using namespace clipp;
 using namespace std;
 
+double calcFunctionValue(vector<double> &functionValue, Graph *G, const vector<int> &sigma, int g,int k, int tau){
+    return 1;
+}
+
 void calcAccuracyScore(vector<double> &accuracyScore, const vector<int> &sigma, const vector<int> &realSigma, int g, int k, int tau){
     int count=0;
     for(int i=0;i<k-g;i++){
@@ -38,7 +42,6 @@ void calcSequenceScore(vector<double> &sequenceScore, const vector<int> &sigma, 
                 cnt++;
                 if(j>=g) {
                     if(j!=cur) degree[j-g].first++;
-                    else cnt++;
                 }
             }
         }
@@ -47,15 +50,33 @@ void calcSequenceScore(vector<double> &sequenceScore, const vector<int> &sigma, 
         int tempCount=count;
         vector<pair<int,int> > temp=degree;
         sort(temp.begin(),temp.end(),greater<pair<int,int> >());
-        for(int j=0;j<tau;j++){
+        for(int j=0;j<min(i+1,tau);j++){
             tempCount-=temp[j].first;
-            int item=sigma[temp[j].second+g];
-            for(int l=0;l<=j;l++){
-                if(M.find(make_pair(sigma[temp[l].second+g],item))!=M.end()
-                    || M.find(make_pair(item,sigma[temp[l].second+g]))!=M.end()){
+            int item=temp[j].second+g;
+            for(int l=0;l<j;l++){
+                int t1 = item;
+                int t2=temp[l].second+g;
+                if(t1>t2) swap(t1,t2);
+                if(M.find(make_pair(sigma[t1],sigma[t2]))!=M.end()){
                     tempCount++;
                 }
             }
+        }
+        if(i<tau && tempCount!=0){
+            cout<<"real: ";
+            for(auto it: realSigma) cout<<it<<" ";
+            cout<<endl;
+            cout<<"Sigma: ";
+            for(auto it: sigma) cout<<it<<" ";
+            cout<<endl;
+            cout<<"degree: ";
+            for(auto it: degree) cout<<"("<<it.first<<" "<<it.second<<") ";
+            cout<<endl;
+            cout<<"temp: ";
+            for(auto it:temp) cout<<"("<<it.first<<" "<<it.second<<") ";
+            cout<<endl;
+            cout<<count<<" "<<tempCount<<endl;
+            exit(0);
         }
         sequenceScore[i]+=tempCount;
     }
@@ -70,25 +91,39 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
     }
 
     ofstream outputFile, resultFile;
-    outputFile.open(output_file,ios::out);
-    if(!outputFile.is_open()){
-        cout<<"Can't open or create file: "<<output_file<<" or permission denied."<<endl;
-        exit(0);
+    ifstream inputFile;
+    if(func=="check"){
+        inputFile.open(output_file, ios::in);
+        if(!taskFile.is_open()){
+            cout << "No such file: " << output_file << " or permission denied." << endl;
+            exit(0);
+        }
+    }else {
+        outputFile.open(output_file, ios::out);
+        if (!outputFile.is_open()) {
+            cout << "Can't open or create file: " << output_file << " or permission denied." << endl;
+            exit(0);
+        }
     }
 
-    resultFile.open(result_file,ios::out);
+    resultFile.open(result_file,ios::out | ios::app);
     if(!resultFile.is_open()){
         cout<<"Can't open or create file: "<<result_file<<" or permission denied."<<endl;
         exit(0);
     }
 
     clock_t start_time=clock();
-    vector<double> accuracyScore=vector<double>(k-g);
-    vector<double> sequenceScore=vector<double>(k-g);
+    vector<double> accuracyScore=vector<double>(k-g,0);
+    vector<double> sequenceScore=vector<double>(k-g,0);
 
+    int tmp;
     int taskNum, totalTask = 0;
     taskFile>>taskNum;
-    outputFile<<taskNum<<endl;
+    if(func=="check"){
+        inputFile>>tmp;
+    }else {
+        outputFile << taskNum << endl;
+    }
     for(int taskID=0;taskID<taskNum;taskID++){
         if(taskID%1000==0) cout<<func<<": "<<taskID<<"/"<<taskNum<<endl;
         int totalNodeNum;
@@ -105,11 +140,21 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
         if(func=="RoseNet") RoseNetAlgorithm(G, sigma, realSigma, tau, g, k);
         else if(func=="Frequency") Frequency(G, sigma, realSigma, tau, g, k);
         else if(func=="OMegA") OMegA(G, sigma, realSigma, tau, g, k);
+        else if(func=="Sequence") RoseNetAlgorithm(G, sigma, realSigma, 0, g, k);
+        else if(func=="check"){
+            inputFile>>tmp;
+            for(int i=0,node;i<tmp;i++){
+                inputFile>>node;
+                sigma.push_back(node);
+            }
+        }
         else RoseNetAlgorithm(G, sigma, realSigma, tau, g, k);
 
-        outputFile<<k<<" ";
-        for(int i=0;i<sigma.size() && i<k; i++) outputFile<<sigma[i]<<" ";
-        outputFile<<endl;
+        if(func!="check") {
+            outputFile << k << " ";
+            for (int i = 0; i < sigma.size() && i < k; i++) outputFile << sigma[i] << " ";
+            outputFile << endl;
+        }
         calcAccuracyScore(accuracyScore, sigma, realSigma, g, k, tau);
         calcSequenceScore(sequenceScore, sigma, realSigma, g, k, tau);
     }
@@ -144,6 +189,8 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
     }
     resultFile<<endl;
 
+    resultFile<<endl;
+
     taskFile.close();
     outputFile.close();
     resultFile.close();
@@ -169,8 +216,12 @@ int main(int argc, char* argv[]){
         return 0;
     }
     Graph *G=new Graph(network_file);
-
-    Run(G, task_file, output_file, result_file, tau, g, k, func);
-
+    if(tau==-1){
+        for(int t=0;t<=10;t++){
+            Run(G,task_file, output_file, result_file, t, g, k, func);
+        }
+    }else {
+        Run(G, task_file, output_file, result_file, tau, g, k, func);
+    }
     return 0;
 }

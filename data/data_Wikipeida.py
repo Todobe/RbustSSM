@@ -1,5 +1,7 @@
 import os
 import argparse
+import json
+import codecs
 
 from collections import defaultdict
 
@@ -22,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument('--paths_file', default="./wikispeedia_paths-and-graph/paths_finished.tsv", type=str, help='paths file path')
     parser.add_argument('--output_file', default="./wikispeedia_network.txt", type=str, help='output file')
     parser.add_argument('--task_file', default="./wikispeedia_task.txt", type=str, help='task file')
+    parser.add_argument('--map_file', default="./wikispeedia_map.json", type=str, help='map file')
     args = parser.parse_args()
 
     links = []
@@ -81,6 +84,11 @@ if __name__ == "__main__":
 
     print(len(edge_weight), len(paths))
 
-
+    revMap = {}
+    for key in articleID:
+        revMap[articleID[key]] = key
+    with codecs.open(args.map_file, "w", 'utf-8') as file:
+        json.dump(revMap, file, ensure_ascii=False)
+        file.write('\n')
 
 

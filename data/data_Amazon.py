@@ -1,4 +1,5 @@
 import json
+import codecs
 import gzip
 import os
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     parser.add_argument('--big_user_bound', default=10, type=int, help='big user bound')
     parser.add_argument('--item_bound', default=50, type=int, help='item bound')
     parser.add_argument('--user_bound', default=0, type=int, help='user bound')
+    parser.add_argument('--map_file', default="./Video_game_map.json", type=str, help='map file')
     args = parser.parse_args()
 
     userCount=defaultdict(int)
@@ -131,3 +133,10 @@ if __name__ == "__main__":
         file.close()
 
     print(itemIDCount, edge_num, big_user_cnt)
+
+    revMap = {}
+    for key in itemIDMap:
+        revMap[itemIDMap[key]] = key
+    with codecs.open(args.map_file, "w", 'utf-8') as file:
+        json.dump(revMap, file, ensure_ascii=False)
+        file.write('\n')
