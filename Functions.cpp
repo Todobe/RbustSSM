@@ -47,20 +47,22 @@ void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma,
     vector<int> given;
     for(int i=0;i<g;i++){
         given.push_back(realSigma[i]);
-        if(sigma1.size()<tau){
-            sigma1.push_back(realSigma[i]);
-        }else{
-            sigma2.push_back(realSigma[i]);
-        }
+//        if(sigma1.size()<tau){
+//            sigma1.push_back(realSigma[i]);
+//        }else{
+//            sigma2.push_back(realSigma[i]);
+//        }
     }
 
-    while(sigma1.size() < tau){
+    while(sigma1.size() < min(tau,k-g)){
         pair<int, int> e=make_pair(-1, -1);
         double maxh=0;
         for(auto edge:G->Edges){
             //===
-            if(edge.first!=edge.second && find(sigma1.begin(),sigma1.end(),edge.first)==sigma1.end()) continue;
+            if(edge.first!=edge.second && find(sigma1.begin(),sigma1.end(),edge.first)==sigma1.end()
+                                          && find(given.begin(), given.end() ,edge.first)==given.end()) continue;
             //===
+            if(find(given.begin(), given.end(), edge.second)!=given.end()) continue;
             if(find(sigma1.begin(), sigma1.end(), edge.second)!=sigma1.end()) continue;
             if(sigma1.size()==tau-1 && edge.first!=edge.second) continue;
             double h = calcFunction(G, edge, sigma1);
@@ -72,14 +74,15 @@ void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma,
         if(e.first==-1 || e.second==-1){
             break;
         }
-        if(e.first==e.second || find(sigma1.begin(), sigma1.end(), e.first)!=sigma1.end()){
+        if(e.first==e.second || find(sigma1.begin(), sigma1.end(), e.first)!=sigma1.end()
+        || find(given.begin(), given.end(), e.first)!=given.end()){
             sigma1.push_back(e.second);
         }else{
             sigma1.push_back(e.first);
             sigma1.push_back(e.second);
         }
     }
-    while(sigma2.size() < k - tau){
+    while(sigma2.size() < k - tau -g){
         pair<int,int> e=make_pair(-1,-1);
         double maxh=0;
         for(auto edge:G->Edges){
@@ -87,9 +90,10 @@ void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma,
             if(edge.first!=edge.second && find(sigma2.begin(),sigma2.end(),edge.first)==sigma2.end()
                && find(given.begin(), given.end() ,edge.first)==given.end()) continue;
             //====
+            if(find(given.begin(), given.end(), edge.second)!=given.end()) continue;
             if(find(sigma1.begin(), sigma1.end(), edge.second)!=sigma1.end()) continue;
             if(find(sigma2.begin(), sigma2.end(), edge.second)!=sigma2.end()) continue;
-            if(sigma2.size()==k-tau-1 && edge.first!=edge.second) continue;
+            if(sigma2.size()==k-tau-g-1 && edge.first!=edge.second) continue;
             double h=calcFunction(G, edge, sigma2);
             if(h > maxh){
                 maxh=h;
@@ -99,14 +103,17 @@ void RoseNetAlgorithm(Graph *G, vector<int> &sigma, const vector<int> realSigma,
         if(e.first==-1 || e.second==-1) {
             break;
         }
-        if(e.first==e.second || find(sigma1.begin(), sigma1.end(), e.first)!=sigma1.end() ||
-           find(sigma2.begin(),sigma2.end(), e.first)!=sigma2.end()){
+        if(e.first==e.second || find(sigma1.begin(), sigma1.end(), e.first)!=sigma1.end()
+            ||find(sigma2.begin(),sigma2.end(), e.first)!=sigma2.end()
+            || find(given.begin(), given.end(), e.first)!=given.end()){
             sigma2.push_back(e.second);
         }else{
             sigma2.push_back(e.first);
             sigma2.push_back(e.second);
         }
     }
+
+    for(auto it:given) sigma.push_back(it);
     for(auto it:sigma1) sigma.push_back(it);
     for(auto it:sigma2) sigma.push_back(it);
 }

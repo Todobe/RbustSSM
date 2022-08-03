@@ -13,15 +13,40 @@
 using namespace clipp;
 using namespace std;
 
-double calcFunctionValue(vector<double> &functionValue, Graph *G, const vector<int> &sigma, int g,int k, int tau){
-    return 1;
+void calcFunctionValue(vector<double> &functionValue, Graph *G, const vector<int> &sigma, int g,int k, int tau){
+    int shuffle_count = 100;
+    vector<bool> del=vector<bool>(k);
+    vector<int> seq;
+    for(int K=0;K<k-g;K++) {
+        seq.push_back(K+g);
+        double ans=0;
+        for(int l=0;l<shuffle_count;l++) {
+            //random_shuffle(seq.begin(),seq.end());
+            for (int i = 0; i < k; i++) del[i] = false;
+            for (int i = 0; i < min(tau,int(seq.size())); i++) del[seq[i]] = true;
+            for (int i = g; i <= K+g; i++) {
+                double cnt = 1;
+                for (int j = 0; j <= i; j++) {
+                    if (del[i] || del[j]) continue;
+                    pair<int, int> tmpe = make_pair(sigma[j], sigma[i]);
+                    if (G->Weight.find(tmpe) != G->Weight.end()) {
+                        cnt *= 1 - G->Weight[tmpe];
+                    }
+                }
+                ans += 1 - cnt;
+            }
+        }
+        functionValue[K] += ans / shuffle_count;
+    }
 }
 
 void calcAccuracyScore(vector<double> &accuracyScore, const vector<int> &sigma, const vector<int> &realSigma, int g, int k, int tau){
-    int count=0;
-    for(int i=0;i<k-g;i++){
-        if(find(realSigma.begin(),realSigma.end(),sigma[g+i])!=realSigma.end()) count++;
-        if(count>tau) accuracyScore[i] += count-tau;
+    int count = 0;
+    for (int i = 0; i < k - g; i++) {
+        //if (find(realSigma.begin(), realSigma.end(), sigma[g + i]) != realSigma.end()) count++;
+        //if (count > tau) accuracyScore[i] += count - tau;
+        if(i>=tau && find(realSigma.begin(), realSigma.end(), sigma[g + i]) != realSigma.end()) count++;
+        accuracyScore[i] += count;
     }
 }
 
@@ -49,7 +74,7 @@ void calcSequenceScore(vector<double> &sequenceScore, const vector<int> &sigma, 
         count+=cnt;
         int tempCount=count;
         vector<pair<int,int> > temp=degree;
-        sort(temp.begin(),temp.end(),greater<pair<int,int> >());
+        //sort(temp.begin(),temp.end(),greater<pair<int,int> >());
         for(int j=0;j<min(i+1,tau);j++){
             tempCount-=temp[j].first;
             int item=temp[j].second+g;
@@ -82,7 +107,7 @@ void calcSequenceScore(vector<double> &sequenceScore, const vector<int> &sigma, 
     }
 }
 
-void Run(Graph *G, string task_file, string output_file, string result_file, int tau, int g, int k, string func){
+void Run(Graph *G, string task_file, string output_file, string result_file, int tau, int g, int k, string func, bool eval_del=true){
     ifstream taskFile;
     taskFile.open(task_file, ios::in);
     if(!taskFile.is_open()){
@@ -115,6 +140,7 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
     clock_t start_time=clock();
     vector<double> accuracyScore=vector<double>(k-g,0);
     vector<double> sequenceScore=vector<double>(k-g,0);
+    vector<double> functionValue=vector<double>(k-g,0);
 
     int tmp;
     int taskNum, totalTask = 0;
@@ -155,8 +181,15 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
             for (int i = 0; i < sigma.size() && i < k; i++) outputFile << sigma[i] << " ";
             outputFile << endl;
         }
-        calcAccuracyScore(accuracyScore, sigma, realSigma, g, k, tau);
-        calcSequenceScore(sequenceScore, sigma, realSigma, g, k, tau);
+        if(eval_del) {
+            calcAccuracyScore(accuracyScore, sigma, realSigma, g, k, tau);
+            calcSequenceScore(sequenceScore, sigma, realSigma, g, k, tau);
+            calcFunctionValue(functionValue, G, sigma, g, k, tau);
+        }else{
+            calcAccuracyScore(accuracyScore, sigma, realSigma, g, k, 0);
+            calcSequenceScore(sequenceScore, sigma, realSigma, g, k, 0);
+            calcFunctionValue(functionValue, G, sigma, g, k, 0);
+        }
     }
 
     if(totalTask==0){
@@ -166,6 +199,7 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
     for(int i=0;i<k-g;i++){
         accuracyScore[i] /= totalTask;
         sequenceScore[i] /= totalTask;
+        functionValue[i] /= totalTask;
     }
 
     clock_t end_time = clock();
@@ -173,7 +207,7 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
 
     resultFile<<"Run Algorithm "<<func<<endl;
     resultFile<<"Nodes Number: "<<G->nodeNum<<" Edges Number: "<<G->edgeNum<<endl;
-    resultFile<<"k: "<<k<<" g: "<<g<<" tau: "<<tau<<endl;
+    resultFile<<"k: "<<k<<" g: "<<g<<" tau: "<<tau<<" delete: "<<eval_del<<endl;
     resultFile<<"Total Task Number: "<<taskNum<<endl;
     resultFile<<"Total Valid Task: "<<totalTask<<endl;
     resultFile<<"Time: "<<total_time<<" seconds."<<endl;
@@ -188,7 +222,11 @@ void Run(Graph *G, string task_file, string output_file, string result_file, int
         resultFile<<sequenceScore[i]<<" ";
     }
     resultFile<<endl;
-
+    resultFile<<"Function Value:"<<endl;
+    for(int i=0;i<k-g;i++){
+        resultFile<<functionValue[i]<<" ";
+    }
+    resultFile<<endl;
     resultFile<<endl;
 
     taskFile.close();
@@ -219,6 +257,8 @@ int main(int argc, char* argv[]){
     if(tau==-1){
         for(int t=0;t<=10;t++){
             Run(G,task_file, output_file, result_file, t, g, k, func);
+            if(func=="RoseNet" || func=="Sequence")
+            Run(G,task_file, output_file, result_file, t, g, k, func, false);
         }
     }else {
         Run(G, task_file, output_file, result_file, tau, g, k, func);
